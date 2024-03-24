@@ -4,6 +4,7 @@ from tensorflow.keras import datasets, layers, models
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import time
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
@@ -47,40 +48,55 @@ for index in range(len(train_y)):
         break
 
 # validating the data (balanced dataset and show an example of each (for introduction)
-plt.hist(train_y, bins=10, rwidth=0.9)
-plt.xticks(0.9*np.arange(10)+0.45, range(10))
+# Number of bins should be equal to the number of classes
+num_classes = 10
+bins = np.arange(num_classes + 1) - 0.5  # to center bins on integers
+tick_marks = np.arange(num_classes)  # ticks should be from 0 to 9
+
+# Plotting the histogram
+plt.figure(figsize=(10, 5))  # Optional: Adjust the size to fit the class labels
+plt.hist(train_y, bins=bins, rwidth=0.8)
+plt.xticks(tick_marks, [class_labels[i] for i in tick_marks])
 plt.ylabel("Frequency")
 plt.xlabel("Class Label")
 plt.show()
 
-# preprocessing?
+# preprocessing
+# Flatten the images from 28x28 to 784 pixels for train and test sets
+train_X_flat = train_X.reshape((train_X.shape[0], -1))
+test_X_flat = test_X.reshape((test_X.shape[0], -1))
 
-# method for accuracy calculation
-def get_accuracies(model, train_X, train_y, test_X, test_y):
-    print("Training score:", model.score(train_X, train_y))
-    print("Testing score: ", model.score(test_X, test_y))
+print("New shape of train_X:", train_X_flat.shape)
+print("New shape of test_X:", test_X_flat.shape)
 
-# Logistic Regression
-modelLR = LogisticRegression()
-modelLR.fit(train_X, train_y)
-y_pred = modelLR.predict(test_X)
-get_accuracies(modelLR, train_X, train_y, test_X, test_y)
-print(classification_report(test_y, y_pred))
+# Initialize the models
+models = {
+    'LogisticRegression': LogisticRegression(max_iter=1000),
+    'DecisionTree1': tree.DecisionTreeClassifier(max_depth=15),
+    'RandomForest': RFC(n_estimators=100, max_depth=10),
+    'SVM': SVC(kernel="rbf", C=1)
+}
 
-# Decision Tree
-modelDT = tree.DecisionTreeClassifier(max_depth=15)
-modelDT = modelDT.fit(train_X, train_y)
-print("Decision Tree")
-get_accuracies(modelDT, train_X, train_y, test_X, test_y)
-
-# Random Forest
-modelRFC = RFC(100, max_depth=10)
-modelRFC = modelRFC.fit(train_X, train_y)
-print("Random Forest")
-get_accuracies(modelRFC, train_X, train_y, test_X, test_y)
-
-# SVM
-modelSVC = SVC(kernel="rbf", C=1) # change these values, idk yet what is right here
-modelSVC = modelSVC.fit(train_X, train_y)
-print("SVM")
-get_accuracies(modelSVC, train_X, train_y, test_X, test_y)
+# Train and evaluate each model
+for name, model in models.items():
+    # Training
+    start_time = time.time()
+    model.fit(train_X_flat, train_y)
+    training_time = time.time() - start_time
+    
+    # Predictions
+    train_predictions = model.predict(train_X_flat)
+    test_predictions = model.predict(test_X_flat)
+    
+    # Evaluation
+    train_accuracy = accuracy_score(train_y, train_predictions)
+    test_accuracy = accuracy_score(test_y, test_predictions)
+    
+    # Output results
+    print(f'{name} Model:')
+    print(f'Train Accuracy: {train_accuracy}')
+    print(f'Test Accuracy: {test_accuracy}')
+    print(f'Training Time: {training_time} seconds\n')
+    print(f'Classification Report for {name}:')
+    print(classification_report(test_y, test_predictions))
+    print('-' * 40)
